@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Science Workbook</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Playful Harmony -->
+    <!-- Application Structure Plan: A single-page, vertical-scrolling application with a sticky top navigation bar for easy access to distinct, interactive activity sections. This structure was chosen to transform the static workbook into a dynamic, game-like experience that is intuitive for children. The flow guides the user from a welcome screen through each activity, making learning active rather than passive. -->
+    <!-- Visualization & Content Choices: Report Info: Animal matching -> Goal: Organize -> Presentation: Click-based matching game -> Interaction: Click animal, then habitat for instant feedback. Justification: More engaging than drawing lines. || Report Info: Experiments -> Goal: Instruct -> Presentation: Tabbed view -> Interaction: Click tabs to switch. Justification: Keeps layout clean. || Report Info: Puzzles -> Goal: Challenge -> Presentation: Input fields & visual maze -> Interaction: Type answers & validate. Justification: Creates an interactive quiz. || Report Info: Scavenger Hunt -> Goal: Track -> Presentation: Interactive checklist with progress bar -> Interaction: Click checkboxes. Justification: Provides satisfying feedback. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #F8F7F4;
+        }
+        .activity-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .activity-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .selected-animal, .selected-label, .selected-sound-animal {
+            outline: 4px solid #38BDF8;
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .habitat-target.drag-over, .plant-part-target.drag-over, .drop-zone.drag-over {
+            border-style: dashed;
+            border-color: #F97316;
+            background-color: #FFF7ED;
+        }
+        .feedback-correct {
+            border: 4px solid #22C55E;
+        }
+        .feedback-incorrect {
+            border: 4px solid #EF4444;
+        }
+        .tab.active {
+            background-color: #F97316;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .checklist-item-checked {
+            text-decoration: line-through;
+            color: #6B7280;
+        }
+        .draggable-item {
+            cursor: grab;
+        }
+        .draggable-item:active {
+            cursor: grabbing;
+        }
+        .drop-zone {
+            min-height: 120px;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <a href="#" class="text-2xl font-black text-blue-500">🔬 Science Workbook</a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-1 flex-wrap">
+                        <a href="#animal-homes" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-2 py-2 rounded-md text-sm font-medium">Animal Homes</a>
+                        <a href="#experiments" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-2 py-2 rounded-md text-sm font-medium">Experiments</a>
+                        <a href="#space-puzzles" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-2 py-2 rounded-md text-sm font-medium">Space Puzzles</a>
+                        <a href="#scavenger-hunt" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-2 py-2 rounded-md text-sm font-medium">Nature Hunt</a>
+                        <a href="#plant-parts" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-2 py-2 rounded-md text-sm font-medium">Plant Parts</a>
+                        <a href="#sink-float" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-2 py-2 rounded-md text-sm font-medium">Sink or Float</a>
+                        <a href="#animal-sounds" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-2 py-2 rounded-md text-sm font-medium">Animal Sounds</a>
+                        <a href="#food-groups" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-2 py-2 rounded-md text-sm font-medium">Food Groups</a>
+                        <a href="#life-cycle" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-2 py-2 rounded-md text-sm font-medium">Life Cycle</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="h-6 w-6" id="menu-icon-open" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                         <svg class="h-6 w-6 hidden" id="menu-icon-close" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="mobile-menu" class="md:hidden hidden">
+                <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                    <a href="#animal-homes" class="mobile-nav-link text-gray-600 hover:bg-gray-200 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Animal Homes</a>
+                    <a href="#experiments" class="mobile-nav-link text-gray-600 hover:bg-gray-200 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Experiments</a>
+                    <a href="#space-puzzles" class="mobile-nav-link text-gray-600 hover:bg-gray-200 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Space Puzzles</a>
+                    <a href="#scavenger-hunt" class="mobile-nav-link text-gray-600 hover:bg-gray-200 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Nature Hunt</a>
+                    <a href="#plant-parts" class="mobile-nav-link text-gray-600 hover:bg-gray-200 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Plant Parts</a>
+                    <a href="#sink-float" class="mobile-nav-link text-gray-600 hover:bg-gray-200 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Sink or Float</a>
+                    <a href="#animal-sounds" class="mobile-nav-link text-gray-600 hover:bg-gray-200 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Animal Sounds</a>
+                    <a href="#food-groups" class="mobile-nav-link text-gray-600 hover:bg-gray-200 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Food Groups</a>
+                    <a href="#life-cycle" class="mobile-nav-link text-gray-600 hover:bg-gray-200 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Life Cycle</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <section id="welcome" class="text-center mb-12 md:mb-16">
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-gray-900 mb-4">Welcome, Young Scientist!</h1>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600">Get ready to explore the amazing world around you. This interactive workbook is filled with puzzles, experiments, and challenges to spark your curiosity. Let's begin the adventure!</p>
+        </section>
+
+        <div class="space-y-16 md:space-y-20">
+
+            <section id="animal-homes" class="bg-[#EFEAD8] p-6 md:p-8 rounded-2xl shadow-lg">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Section 1: Animal Homes 🐾</h2>
+                    <p class="mt-2 text-gray-600">Different animals live in different habitats. Click an animal, then click on the habitat where you think it belongs. Let's see if you can get them all right!</p>
+                </div>
+                
+                <div id="matching-game-container" class="space-y-8">
+                    <div class="flex flex-wrap justify-center gap-4 md:gap-6" id="animal-cards-container">
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6" id="habitat-cards-container">
+                    </div>
+                </div>
+                <div class="text-center mt-8">
+                     <button id="reset-matching-game" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors">Reset Game</button>
+                     <p id="matching-feedback" class="mt-4 text-xl font-bold">&nbsp;</p>
+                </div>
+            </section>
+
+            <section id="experiments" class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Section 2: Fun & Easy Experiments 🧪</h2>
+                    <p class="mt-2 text-gray-600">Time to put on your lab coat! Choose an experiment below to see the instructions. Remember to ask an adult for help!</p>
+                </div>
+                <div class="max-w-4xl mx-auto">
+                    <div class="flex justify-center border-b border-gray-200 mb-6">
+                        <button class="tab active flex-1" data-tab="volcano">🌋 Fizzy Volcano</button>
+                        <button class="tab flex-1" data-tab="egg">🥚 Floating Egg</button>
+                    </div>
+
+                    <div id="volcano" class="tab-content active">
+                        <div class="grid md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 class="text-2xl font-bold text-orange-500 mb-4">You Will Need:</h3>
+                                <ul class="list-disc list-inside space-y-2 text-gray-700">
+                                    <li>A small plastic bottle</li>
+                                    <li>Play-doh or clay</li>
+                                    <li>2 tablespoons of baking soda</li>
+                                    <li>1/2 cup of vinegar</li>
+                                    <li>A few drops of red food coloring (optional)</li>
+                                    <li>A tray or pan to contain the "lava"</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-bold text-orange-500 mb-4">Instructions:</h3>
+                                <ol class="list-decimal list-inside space-y-2 text-gray-700">
+                                    <li><strong>Build Your Volcano:</strong> Place the bottle on the tray. Use play-doh to build a volcano shape around it.</li>
+                                    <li><strong>Add the "Magma":</strong> Pour baking soda and food coloring into the bottle.</li>
+                                    <li><strong>Time to Erupt!</strong> Quickly pour in the vinegar and watch the fizzy lava flow!</li>
+                                </ol>
+                            </div>
+                        </div>
+                        <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <p><strong>What's Happening?</strong> When baking soda and vinegar mix, they create a gas called carbon dioxide. The gas builds up pressure and erupts out, just like a real volcano!</p>
+                        </div>
+                    </div>
+
+                    <div id="egg" class="tab-content">
+                        <div class="grid md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 class="text-2xl font-bold text-green-500 mb-4">You Will Need:</h3>
+                                <ul class="list-disc list-inside space-y-2 text-gray-700">
+                                    <li>A tall, clear glass</li>
+                                    <li>Water</li>
+                                    <li>An egg</li>
+                                    <li>6 tablespoons of salt</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-bold text-green-500 mb-4">Instructions:</h3>
+                                <ol class="list-decimal list-inside space-y-2 text-gray-700">
+                                    <li>Fill the glass halfway with water. Gently place the egg in. It sinks!</li>
+                                    <li>Take the egg out. Stir in the salt until it dissolves.</li>
+                                    <li>Now, gently place the egg back in the saltwater. It floats!</li>
+                                </ol>
+                            </div>
+                        </div>
+                         <div class="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                            <p><strong>What's Happening?</strong> Salt makes water denser (heavier). The salty water is now denser than the egg, which allows the egg to float on top!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="space-puzzles" class="bg-[#EFEAD8] p-6 md:p-8 rounded-2xl shadow-lg">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Section 3: Space Puzzles 🚀</h2>
+                    <p class="mt-2 text-gray-600">Let's blast off into space! Test your knowledge by unscrambling the space words.</p>
+                </div>
+                <div class="max-w-2xl mx-auto">
+                    <div id="word-scramble-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
+                    <div class="text-center mt-6">
+                        <button id="check-scramble-answers" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors">Check Answers</button>
+                        <p id="scramble-feedback" class="mt-4 text-lg font-semibold">&nbsp;</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="scavenger-hunt" class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Section 4: Nature Scavenger Hunt 🌳</h2>
+                    <p class="mt-2 text-gray-600">Head outside and see how many of these items you can find. Check them off your list as you go!</p>
+                </div>
+                 <div class="max-w-2xl mx-auto">
+                    <div class="w-full bg-gray-200 rounded-full h-4 mb-4">
+                        <div id="progress-bar" class="bg-yellow-400 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div id="checklist-container" class="space-y-3">
+                    </div>
+                </div>
+            </section>
+
+            <section id="plant-parts" class="bg-[#EFEAD8] p-6 md:p-8 rounded-2xl shadow-lg">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Section 5: Parts of a Plant 🌱</h2>
+                    <p class="mt-2 text-gray-600">Every plant has different parts that help it live and grow. Click a label, then click the correct box to label the plant.</p>
+                </div>
+                <div class="flex flex-col md:flex-row-reverse justify-center items-center gap-8">
+                     <div class="relative w-48 h-80">
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-24 h-24 bg-yellow-300 rounded-full flex items-center justify-center text-5xl">🌻</div>
+                        <div class="absolute bottom-20 left-1/2 -translate-x-1/2 w-4 h-40 bg-green-600"></div>
+                        <div class="absolute bottom-28 left-4 w-16 h-8 bg-green-500 rounded-full -rotate-45"></div>
+                        <div class="absolute bottom-40 right-4 w-16 h-8 bg-green-500 rounded-full rotate-45"></div>
+                        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-24 flex justify-center items-end">
+                            <div class="plant-part-target border-2 border-dashed border-gray-400 rounded-md w-24 h-10 cursor-pointer" data-part="flower"></div>
+                        </div>
+                        <div class="absolute top-1/2 left-0 -translate-y-1/2 h-full flex items-center">
+                            <div class="plant-part-target border-2 border-dashed border-gray-400 rounded-md w-24 h-10 cursor-pointer" data-part="leaf"></div>
+                        </div>
+                        <div class="absolute top-1/2 right-0 -translate-y-1/2 h-full flex items-center">
+                            <div class="plant-part-target border-2 border-dashed border-gray-400 rounded-md w-24 h-10 cursor-pointer" data-part="stem"></div>
+                        </div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-1/4 flex justify-center items-end">
+                             <div class="plant-part-target border-2 border-dashed border-gray-400 rounded-md w-24 h-10 cursor-pointer" data-part="roots"></div>
+                        </div>
+                     </div>
+                     <div class="flex flex-wrap justify-center md:flex-col gap-4" id="plant-labels-container">
+                     </div>
+                </div>
+                 <div class="text-center mt-8">
+                     <p id="plant-feedback" class="mt-4 text-xl font-bold">&nbsp;</p>
+                </div>
+            </section>
+
+            <section id="sink-float" class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Section 6: Sink or Float? 🌊</h2>
+                    <p class="mt-2 text-gray-600">Let's make a prediction! For each object, guess whether it will sink or float in water.</p>
+                </div>
+                <div id="sink-float-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                </div>
+            </section>
+
+            <section id="animal-sounds" class="bg-[#EFEAD8] p-6 md:p-8 rounded-2xl shadow-lg">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Section 7: Animal Sound Words 🗣️</h2>
+                    <p class="mt-2 text-gray-600">What does the cow say? Match each animal to the word for its sound. Click an animal, then click the sound!</p>
+                </div>
+                <div class="space-y-8">
+                    <div class="flex flex-wrap justify-center gap-4 md:gap-6" id="animal-sound-animal-cards">
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6" id="animal-sound-word-cards">
+                    </div>
+                </div>
+                <div class="text-center mt-8">
+                     <button id="reset-sound-game" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors">Reset Game</button>
+                     <p id="sound-matching-feedback" class="mt-4 text-xl font-bold">&nbsp;</p>
+                </div>
+            </section>
+
+            <section id="food-groups" class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Section 8: Food Group Sort 🍎🍞</h2>
+                    <p class="mt-2 text-gray-600">Drag and drop each food item into the correct food group to learn about healthy eating!</p>
+                </div>
+                <div class="flex flex-wrap justify-center gap-4 p-4 mb-8 bg-gray-100 rounded-lg" id="food-items-source">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="food-group-zones">
+                </div>
+                 <div class="text-center mt-8">
+                    <p id="food-group-feedback" class="mt-4 text-xl font-bold">&nbsp;</p>
+                </div>
+            </section>
+            
+            <section id="life-cycle" class="bg-[#EFEAD8] p-6 md:p-8 rounded-2xl shadow-lg">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Section 9: Butterfly Life Cycle 🦋</h2>
+                    <p class="mt-2 text-gray-600">Drag each stage of the butterfly's life into the correct order to see it transform!</p>
+                </div>
+                <div class="flex flex-col lg:flex-row items-center justify-center gap-8">
+                    <div id="lifecycle-stages-source" class="flex lg:flex-col flex-wrap justify-center gap-4 p-4 bg-gray-100 rounded-lg">
+                    </div>
+                    <div id="lifecycle-drop-zones" class="flex items-center justify-center gap-2 md:gap-4 flex-wrap">
+                    </div>
+                </div>
+                <div class="text-center mt-8">
+                    <p id="lifecycle-feedback" class="mt-4 text-xl font-bold">&nbsp;</p>
+                </div>
+            </section>
+
+        </div>
+    </main>
+    
+    <footer class="text-center py-6 mt-12 bg-gray-800 text-white">
+        <p>Congratulations on completing the Science Exploration Workbook!</p>
+        <p class="text-sm text-gray-400">Keep asking questions, keep exploring, and never stop learning.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // Mobile Menu Toggle
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const menuIconOpen = document.getElementById('menu-icon-open');
+            const menuIconClose = document.getElementById('menu-icon-close');
+            const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
+
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+                menuIconOpen.classList.toggle('hidden');
+                menuIconClose.classList.toggle('hidden');
+            });
+
+            mobileNavLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.add('hidden');
+                    menuIconOpen.classList.remove('hidden');
+                    menuIconClose.classList.add('hidden');
+                });
+            });
+
+            // Section 1: Animal Homes Matching Game
+            const animals = [
+                { id: 'penguin', name: 'Penguin', emoji: '🐧', habitat: 'arctic' },
+                { id: 'camel', name: 'Camel', emoji: '🐫', habitat: 'desert' },
+                { id: 'monkey', name: 'Monkey', emoji: '🐒', habitat: 'jungle' },
+                { id: 'shark', name: 'Shark', emoji: '🦈', habitat: 'ocean' },
+                { id: 'lion', name: 'Lion', emoji: '🦁', habitat: 'savanna' },
+                { id: 'frog', name: 'Frog', emoji: '🐸', habitat: 'pond' },
+                { id: 'bear', name: 'Bear', emoji: '🐻', habitat: 'forest' },
+                { id: 'fish', name: 'Fish', emoji: '🐠', habitat: 'ocean' }
+            ];
+            const habitats = [
+                { id: 'desert', name: 'Desert', emoji: '🏜️' },
+                { id: 'jungle', name: 'Jungle', emoji: '🌳' },
+                { id: 'ocean', name: 'Ocean', emoji: '🌊' },
+                { id: 'arctic', name: 'Arctic', emoji: '❄️' },
+                { id: 'savanna', name: 'Savanna', emoji: '🦓'},
+                { id: 'pond', name: 'Pond', emoji: '🦆' },
+                { id: 'forest', name: 'Forest', emoji: '🌲' }
+            ];
+
+            let selectedAnimal = null;
+            let correctMatches = 0;
+            const animalCardsContainer = document.getElementById('animal-cards-container');
+            const habitatCardsContainer = document.getElementById('habitat-cards-container');
+            const matchingFeedback = document.getElementById('matching-feedback');
+            const resetMatchingGameBtn = document.getElementById('reset-matching-game');
+
+            function initializeMatchingGame() {
+                selectedAnimal = null;
+                correctMatches = 0;
+                animalCardsContainer.innerHTML = '';
+                habitatCardsContainer.innerHTML = '';
+                matchingFeedback.innerHTML = '&nbsp;';
+
+                const uniqueHabitats = [...new Map(habitats.map(item => [item.id, item])).values()];
+
+                animals.forEach(animal => {
+                    const card = document.createElement('div');
+                    card.className = 'activity-card bg-white p-4 rounded-lg shadow cursor-pointer text-center w-28';
+                    card.dataset.animalId = animal.id;
+                    card.innerHTML = `<span class="text-5xl">${animal.emoji}</span><p class="font-bold mt-2">${animal.name}</p>`;
+                    card.addEventListener('click', () => selectAnimal(card, animal.id));
+                    animalCardsContainer.appendChild(card);
+                });
+
+                uniqueHabitats.sort(() => 0.5 - Math.random()).forEach(habitat => {
+                    const card = document.createElement('div');
+                    card.className = 'habitat-target bg-white p-6 rounded-lg shadow cursor-pointer text-center flex flex-col items-center justify-center min-h-[140px]';
+                    card.dataset.habitatId = habitat.id;
+                    card.innerHTML = `<span class="text-5xl">${habitat.emoji}</span><p class="font-bold mt-2">${habitat.name}</p>`;
+                    card.addEventListener('click', () => matchAnimalToHabitat(card, habitat.id));
+                    habitatCardsContainer.appendChild(card);
+                });
+            }
+
+            function selectAnimal(card, animalId) {
+                if (card.classList.contains('opacity-50')) return;
+                
+                document.querySelectorAll('#animal-cards-container .activity-card').forEach(c => c.classList.remove('selected-animal'));
+                card.classList.add('selected-animal');
+                selectedAnimal = animalId;
+            }
+
+            function matchAnimalToHabitat(habitatCard, habitatId) {
+                if (!selectedAnimal) return;
+
+                const animalData = animals.find(a => a.id === selectedAnimal);
+                const animalCard = document.querySelector(`#animal-cards-container [data-animal-id="${selectedAnimal}"]`);
+                
+                if (animalData.habitat === habitatId) {
+                    matchingFeedback.textContent = 'Correct Match!';
+                    matchingFeedback.className = 'mt-4 text-xl font-bold text-green-600';
+                    
+                    const animalEmoji = document.createElement('span');
+                    animalEmoji.className = 'text-4xl m-1';
+                    animalEmoji.textContent = animalData.emoji;
+                    habitatCard.appendChild(animalEmoji);
+                    
+                    animalCard.classList.add('opacity-25', 'pointer-events-none');
+                    animalCard.classList.remove('selected-animal');
+                    
+                    correctMatches++;
+                    if (correctMatches === animals.length) {
+                        matchingFeedback.textContent = '🎉 You matched them all! Great job! 🎉';
+                    }
+                } else {
+                    matchingFeedback.textContent = 'Not quite, try again!';
+                    matchingFeedback.className = 'mt-4 text-xl font-bold text-red-600';
+                    animalCard.classList.add('feedback-incorrect');
+                    setTimeout(() => animalCard.classList.remove('feedback-incorrect'), 1000);
+                }
+                
+                selectedAnimal = null;
+                document.querySelectorAll('#animal-cards-container .activity-card').forEach(c => c.classList.remove('selected-animal'));
+            }
+
+            resetMatchingGameBtn.addEventListener('click', initializeMatchingGame);
+            
+            // Section 2: Experiment Tabs
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const target = tab.getAttribute('data-tab');
+                    
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === target) {
+                            content.classList.add('active');
+                        }
+                    });
+                });
+                tab.style.padding = '0.75rem 1rem';
+                tab.style.cursor = 'pointer';
+                tab.style.borderTopLeftRadius = '0.5rem';
+                tab.style.borderTopRightRadius = '0.5rem';
+                tab.style.fontWeight = 'bold';
+                tab.style.textAlign = 'center';
+            });
+            
+            // Section 3: Space Puzzles
+            const scrambleData = [
+                { scrambled: 'RUMCERY', answer: 'MERCURY' },
+                { scrambled: 'SUNEZ', answer: 'VENUS' },
+                { scrambled: 'THEAR', answer: 'EARTH' },
+                { scrambled: 'SMAR', answer: 'MARS' },
+                { scrambled: 'PIJUTER', answer: 'JUPITER' },
+                { scrambled: 'TURSAN', answer: 'SATURN' },
+                { scrambled: 'SURANU', answer: 'URANUS' },
+                { scrambled: 'PENTUNE', answer: 'NEPTUNE' },
+                { scrambled: 'YAGALX', answer: 'GALAXY'},
+                { scrambled: 'MOCET', answer: 'COMET'},
+                { scrambled: 'TORDAIES', answer: 'ASTEROID'},
+                { scrambled: 'RATSS', answer: 'STARS'},
+            ];
+            
+            const scrambleContainer = document.getElementById('word-scramble-container');
+            const checkScrambleBtn = document.getElementById('check-scramble-answers');
+            const scrambleFeedback = document.getElementById('scramble-feedback');
+            
+            scrambleData.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'flex flex-col sm:flex-row items-center sm:justify-between space-y-2 sm:space-y-0';
+                div.innerHTML = `
+                    <label for="scramble-${index}" class="font-bold text-lg">${item.scrambled}</label>
+                    <input type="text" id="scramble-${index}" data-answer="${item.answer}" class="w-full sm:w-2/3 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                `;
+                scrambleContainer.appendChild(div);
+            });
+            
+            checkScrambleBtn.addEventListener('click', () => {
+                let correctCount = 0;
+                scrambleData.forEach((item, index) => {
+                    const input = document.getElementById(`scramble-${index}`);
+                    const userAnswer = input.value.trim().toUpperCase();
+                    if (userAnswer === item.answer) {
+                        input.classList.remove('border-red-500');
+                        input.classList.add('border-green-500');
+                        correctCount++;
+                    } else {
+                        input.classList.remove('border-green-500');
+                        input.classList.add('border-red-500');
+                    }
+                });
+                
+                scrambleFeedback.textContent = `You got ${correctCount} out of ${scrambleData.length} correct!`;
+                 if (correctCount === scrambleData.length) {
+                    scrambleFeedback.textContent = `Perfect score! You're a space expert! 🪐`;
+                    scrambleFeedback.className = 'mt-4 text-lg font-semibold text-green-600';
+                } else {
+                    scrambleFeedback.className = 'mt-4 text-lg font-semibold text-blue-600';
+                }
+            });
+
+            // Section 4: Nature Scavenger Hunt
+            const checklistItems = [
+                "A leaf that is smaller than your thumb",
+                "A smooth, grey rock",
+                "A Y-shaped stick",
+                "A feather",
+                "Something a squirrel would eat (like an acorn or seed)",
+                "A flower with yellow petals",
+                "A pinecone",
+                "Something that makes a crunching sound",
+                "A spider web",
+                "Three different types of leaves",
+                "A seed pod",
+                "Something green that isn't a leaf",
+            ];
+            
+            const checklistContainer = document.getElementById('checklist-container');
+            const progressBar = document.getElementById('progress-bar');
+            
+            checklistItems.forEach((itemText, index) => {
+                const item = document.createElement('div');
+                item.className = 'bg-gray-100 p-3 rounded-lg flex items-center cursor-pointer hover:bg-gray-200 transition-colors';
+                item.innerHTML = `
+                    <input type="checkbox" id="item-${index}" class="hidden">
+                    <div class="w-6 h-6 border-2 border-gray-400 rounded-md mr-4 flex-shrink-0 flex items-center justify-center">
+                        <span class="hidden text-green-500 font-black">✔</span>
+                    </div>
+                    <label for="item-${index}" class="flex-grow cursor-pointer">${itemText}</label>
+                `;
+                
+                item.addEventListener('click', () => {
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    const checkmark = item.querySelector('span');
+                    const label = item.querySelector('label');
+                    
+                    checkbox.checked = !checkbox.checked;
+                    checkmark.classList.toggle('hidden');
+                    label.classList.toggle('checklist-item-checked');
+                    
+                    updateProgress();
+                });
+                
+                checklistContainer.appendChild(item);
+            });
+
+            function updateProgress() {
+                const checkedItems = document.querySelectorAll('#checklist-container input[type="checkbox"]:checked');
+                const progress = (checkedItems.length / checklistItems.length) * 100;
+                progressBar.style.width = `${progress}%`;
+            }
+
+            // Section 5: Parts of a Plant
+            const plantLabels = [
+                { id: 'flower', name: 'Flower' },
+                { id: 'leaf', name: 'Leaf' },
+                { id: 'stem', name: 'Stem' },
+                { id: 'roots', name: 'Roots' },
+            ];
+            const plantLabelsContainer = document.getElementById('plant-labels-container');
+            const plantFeedback = document.getElementById('plant-feedback');
+            let selectedLabel = null;
+            let correctPlacements = 0;
+
+            function initializePlantGame() {
+                selectedLabel = null;
+                correctPlacements = 0;
+                plantLabelsContainer.innerHTML = '';
+                plantFeedback.innerHTML = '&nbsp;';
+                document.querySelectorAll('.plant-part-target').forEach(target => {
+                    target.innerHTML = '';
+                    target.classList.remove('feedback-correct', 'pointer-events-none');
+                });
+
+                plantLabels.sort(() => 0.5 - Math.random()).forEach(label => {
+                    const button = document.createElement('button');
+                    button.className = 'selected-label-btn bg-white p-2 px-4 rounded-lg shadow cursor-pointer font-bold';
+                    button.dataset.labelId = label.id;
+                    button.textContent = label.name;
+                    button.addEventListener('click', () => selectLabel(button, label.id));
+                    plantLabelsContainer.appendChild(button);
+                });
+            }
+
+            function selectLabel(button, labelId) {
+                if (button.classList.contains('opacity-50')) return;
+                document.querySelectorAll('.selected-label-btn').forEach(b => b.classList.remove('selected-label'));
+                button.classList.add('selected-label');
+                selectedLabel = labelId;
+            }
+
+            document.querySelectorAll('.plant-part-target').forEach(target => {
+                target.addEventListener('click', () => placeLabel(target));
+            });
+            
+            function placeLabel(target) {
+                if (!selectedLabel || target.classList.contains('feedback-correct')) return;
+                
+                const correctPart = target.dataset.part;
+                const labelData = plantLabels.find(l => l.id === selectedLabel);
+                const labelButton = document.querySelector(`[data-label-id="${selectedLabel}"]`);
+
+                if (correctPart === selectedLabel) {
+                    plantFeedback.textContent = 'That\'s right!';
+                    plantFeedback.className = 'mt-4 text-xl font-bold text-green-600';
+                    correctPlacements++;
+
+                    target.innerHTML = `<span class="font-bold text-green-700">${labelData.name}</span>`;
+                    target.classList.add('feedback-correct', 'pointer-events-none');
+                    labelButton.classList.add('opacity-50', 'pointer-events-none');
+                    labelButton.classList.remove('selected-label');
+                    
+                    if (correctPlacements === plantLabels.length) {
+                        plantFeedback.textContent = '🌿 You labeled the whole plant! Well done! 🌿';
+                    }
+
+                } else {
+                    plantFeedback.textContent = 'Oops, that\'s not it. Try again!';
+                    plantFeedback.className = 'mt-4 text-xl font-bold text-red-600';
+                    target.classList.add('feedback-incorrect');
+                    setTimeout(() => target.classList.remove('feedback-incorrect'), 1000);
+                }
+                selectedLabel = null;
+                document.querySelectorAll('.selected-label-btn').forEach(b => b.classList.remove('selected-label'));
+            }
+            
+            // Section 6: Sink or Float
+            const sinkFloatItems = [
+                { name: 'Rock', emoji: '🪨', answer: 'sink', explanation: 'A rock is dense, so it sinks.' },
+                { name: 'Leaf', emoji: '🍁', answer: 'float', explanation: 'A leaf is light and traps air, so it floats.' },
+                { name: 'Coin', emoji: '🪙', answer: 'sink', explanation: 'A metal coin is much denser than water.' },
+                { name: 'Apple', emoji: '🍎', answer: 'float', explanation: 'An apple is about 25% air, which makes it float!' },
+                { name: 'Key', emoji: '🔑', answer: 'sink', explanation: 'A metal key will sink.' },
+                { name: 'Pencil', emoji: '✏️', answer: 'float', explanation: 'Wood is less dense than water.' },
+                { name: 'Bottle Cap', emoji: '🧴', answer: 'float', explanation: 'Plastic caps are light and trap air.' },
+                { name: 'Orange', emoji: '🍊', answer: 'float', explanation: 'The peel has air pockets that help it float!' },
+            ];
+
+            const sinkFloatContainer = document.getElementById('sink-float-container');
+
+            function initializeSinkFloatGame() {
+                sinkFloatContainer.innerHTML = '';
+                sinkFloatItems.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-gray-100 p-4 rounded-lg shadow text-center';
+                    card.innerHTML = `
+                        <div class="text-6xl mb-4">${item.emoji}</div>
+                        <h4 class="text-xl font-bold mb-4">${item.name}</h4>
+                        <div class="flex justify-center gap-2 mb-3">
+                            <button class="sink-float-btn w-1/2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded" data-guess="sink">Sink</button>
+                            <button class="sink-float-btn w-1/2 bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded" data-guess="float">Float</button>
+                        </div>
+                        <p class="feedback-text text-sm h-10"></p>
+                    `;
+                    card.querySelectorAll('.sink-float-btn').forEach(button => {
+                        button.addEventListener('click', () => {
+                            const guess = button.dataset.guess;
+                            const feedbackP = card.querySelector('.feedback-text');
+                            const buttons = card.querySelectorAll('.sink-float-btn');
+
+                            if (guess === item.answer) {
+                                feedbackP.textContent = `Correct! ${item.explanation}`;
+                                feedbackP.classList.add('text-green-600', 'font-semibold');
+                                feedbackP.classList.remove('text-red-600');
+                                buttons.forEach(b => b.disabled = true);
+                            } else {
+                                feedbackP.textContent = 'Not quite, try the other one!';
+                                feedbackP.classList.add('text-red-600', 'font-semibold');
+                            }
+                        });
+                    });
+                    sinkFloatContainer.appendChild(card);
+                });
+            }
+
+            // Section 7: Animal Sounds Word Matching
+            const soundMatchData = [
+                { id: 'cow', name: 'Cow', emoji: '🐮', sound: 'Moo' },
+                { id: 'dog', name: 'Dog', emoji: '🐶', sound: 'Woof' },
+                { id: 'cat', name: 'Cat', emoji: '🐱', sound: 'Meow' },
+                { id: 'sheep', name: 'Sheep', emoji: '🐑', sound: 'Baa' },
+                { id: 'frog', name: 'Frog', emoji: '🐸', sound: 'Ribbit'},
+                { id: 'duck', name: 'Duck', emoji: '🦆', sound: 'Quack'},
+                { id: 'pig', name: 'Pig', emoji: '🐷', sound: 'Oink'},
+                { id: 'horse', name: 'Horse', emoji: '🐴', sound: 'Neigh'},
+            ];
+
+            const soundAnimalCardsContainer = document.getElementById('animal-sound-animal-cards');
+            const soundWordCardsContainer = document.getElementById('animal-sound-word-cards');
+            const soundMatchingFeedback = document.getElementById('sound-matching-feedback');
+            const resetSoundGameBtn = document.getElementById('reset-sound-game');
+            let selectedSoundAnimal = null;
+            let correctSoundMatches = 0;
+
+            function initializeSoundMatchingGame() {
+                selectedSoundAnimal = null;
+                correctSoundMatches = 0;
+                soundAnimalCardsContainer.innerHTML = '';
+                soundWordCardsContainer.innerHTML = '';
+                soundMatchingFeedback.innerHTML = '&nbsp;';
+
+                const soundWords = soundMatchData.map(item => item.sound);
+
+                soundMatchData.forEach(animal => {
+                    const card = document.createElement('div');
+                    card.className = 'activity-card bg-white p-4 rounded-lg shadow cursor-pointer text-center w-28';
+                    card.dataset.animalId = animal.id;
+                    card.innerHTML = `<span class="text-5xl">${animal.emoji}</span><p class="font-bold mt-2">${animal.name}</p>`;
+                    card.addEventListener('click', () => selectSoundAnimal(card, animal.id));
+                    soundAnimalCardsContainer.appendChild(card);
+                });
+
+                soundWords.sort(() => 0.5 - Math.random()).forEach(sound => {
+                    const card = document.createElement('div');
+                    card.className = 'habitat-target bg-white p-6 rounded-lg shadow cursor-pointer text-center flex items-center justify-center min-h-[100px]';
+                    card.dataset.sound = sound;
+                    card.innerHTML = `<p class="text-3xl font-bold">${sound}</p>`;
+                    card.addEventListener('click', () => matchAnimalToSound(card, sound));
+                    soundWordCardsContainer.appendChild(card);
+                });
+            }
+
+            function selectSoundAnimal(card, animalId) {
+                if (card.classList.contains('opacity-50')) return;
+                
+                document.querySelectorAll('#animal-sound-animal-cards .activity-card').forEach(c => c.classList.remove('selected-sound-animal'));
+                card.classList.add('selected-sound-animal');
+                selectedSoundAnimal = animalId;
+            }
+
+            function matchAnimalToSound(soundCard, sound) {
+                if (!selectedSoundAnimal || soundCard.classList.contains('feedback-correct')) return;
+
+                const animalData = soundMatchData.find(a => a.id === selectedSoundAnimal);
+                const animalCard = document.querySelector(`#animal-sound-animal-cards [data-animal-id="${selectedSoundAnimal}"]`);
+                
+                if (animalData.sound === sound) {
+                    soundMatchingFeedback.textContent = 'Correct Match!';
+                    soundMatchingFeedback.className = 'mt-4 text-xl font-bold text-green-600';
+                    correctSoundMatches++;
+                    
+                    soundCard.classList.add('feedback-correct', 'pointer-events-none', 'opacity-50');
+                    animalCard.classList.add('opacity-50', 'pointer-events-none');
+                    animalCard.classList.remove('selected-sound-animal');
+                    
+                    if (correctSoundMatches === soundMatchData.length) {
+                        soundMatchingFeedback.textContent = '🎉 You matched all the sounds! Great job! 🎉';
+                    }
+                } else {
+                    soundMatchingFeedback.textContent = 'Not quite, try again!';
+                    soundMatchingFeedback.className = 'mt-4 text-xl font-bold text-red-600';
+                    soundCard.classList.add('feedback-incorrect');
+                    setTimeout(() => soundCard.classList.remove('feedback-incorrect'), 1000);
+                }
+                
+                selectedSoundAnimal = null;
+                document.querySelectorAll('#animal-sound-animal-cards .activity-card').forEach(c => c.classList.remove('selected-sound-animal'));
+            }
+            
+            resetSoundGameBtn.addEventListener('click', initializeSoundMatchingGame);
+
+            // Drag and Drop Logic
+            function enableDragAndDrop() {
+                const draggableItems = document.querySelectorAll('.draggable-item');
+                draggableItems.forEach(item => {
+                    item.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', e.target.id);
+                        setTimeout(() => item.classList.add('opacity-50'), 0);
+                    });
+                    item.addEventListener('dragend', () => item.classList.remove('opacity-50'));
+                });
+
+                const dropZones = document.querySelectorAll('.drop-zone');
+                dropZones.forEach(zone => {
+                    zone.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        zone.classList.add('drag-over');
+                    });
+                    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+                    zone.addEventListener('drop', handleDrop);
+                });
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                e.target.classList.remove('drag-over');
+                const id = e.dataTransfer.getData('text/plain');
+                const draggable = document.getElementById(id);
+                const dropZone = e.target.closest('.drop-zone');
+                
+                if (!dropZone || !draggable) return;
+
+                // Food Group Logic
+                if (dropZone.dataset.group) {
+                    const foodGroupFeedback = document.getElementById('food-group-feedback');
+                    if (draggable.dataset.group === dropZone.dataset.group) {
+                        dropZone.appendChild(draggable);
+                        draggable.setAttribute('draggable', 'false');
+                        draggable.classList.remove('cursor-grab');
+                        draggable.classList.add('cursor-default', 'bg-green-100', 'border-2', 'border-green-400');
+                        foodGroupFeedback.textContent = 'Yum! Correct!';
+                        foodGroupFeedback.className = 'mt-4 text-xl font-bold text-green-600';
+                    } else {
+                        foodGroupFeedback.textContent = 'Oops! Wrong group.';
+                        foodGroupFeedback.className = 'mt-4 text-xl font-bold text-red-600';
+                    }
+                }
+
+                // Life Cycle Logic
+                if (dropZone.dataset.order) {
+                    const lifecycleFeedback = document.getElementById('lifecycle-feedback');
+                    if (draggable.dataset.order === dropZone.dataset.order) {
+                        if (dropZone.children.length === 0) {
+                            dropZone.appendChild(draggable);
+                            draggable.setAttribute('draggable', 'false');
+                            draggable.classList.remove('cursor-grab');
+                            draggable.classList.add('cursor-default');
+                            lifecycleFeedback.textContent = 'Great job!';
+                            lifecycleFeedback.className = 'mt-4 text-xl font-bold text-green-600';
+                        }
+                    } else {
+                        lifecycleFeedback.textContent = 'Not quite in the right order...';
+                        lifecycleFeedback.className = 'mt-4 text-xl font-bold text-red-600';
+                    }
+                }
+            }
+            
+            // Section 8: Food Groups
+            function initializeFoodGroupGame() {
+                const foodItemsSource = document.getElementById('food-items-source');
+                const foodGroupZones = document.getElementById('food-group-zones');
+                foodItemsSource.innerHTML = '';
+                foodGroupZones.innerHTML = '';
+
+                const foodItems = [
+                    {id: 'food1', group: 'fruit', emoji: '🍎', name: 'Apple'},
+                    {id: 'food2', group: 'grain', emoji: '🍞', name: 'Bread'},
+                    {id: 'food3', group: 'dairy', emoji: '🧀', name: 'Cheese'},
+                    {id: 'food4', group: 'protein', emoji: ' ', name: 'Chicken'},
+                    {id: 'food5', group: 'vegetable', emoji: '🥕', name: 'Carrot'},
+                    {id: 'food6', group: 'dairy', emoji: '🥛', name: 'Milk'},
+                    {id: 'food7', group: 'protein', emoji: '🐟', name: 'Fish'},
+                    {id: 'food8', group: 'grain', emoji: '🍚', name: 'Rice'},
+                ].sort(() => 0.5 - Math.random());
+
+                const foodGroups = [
+                    {id: 'fruit', name: 'Fruits'},
+                    {id: 'vegetable', name: 'Vegetables'},
+                    {id: 'grain', name: 'Grains'},
+                    {id: 'dairy', name: 'Dairy'},
+                    {id: 'protein', name: 'Protein'}
+                ];
+
+                foodItems.forEach(item => {
+                    const div = document.createElement('div');
+                    div.id = item.id;
+                    div.className = 'draggable-item bg-white p-2 rounded-lg shadow-md text-center';
+                    div.setAttribute('draggable', 'true');
+                    div.dataset.group = item.group;
+                    div.innerHTML = `<span class="text-4xl">${item.emoji}</span><p>${item.name}</p>`;
+                    foodItemsSource.appendChild(div);
+                });
+
+                foodGroups.forEach(group => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-gray-200 p-4 rounded-lg flex flex-col items-center drop-zone border-2 border-dashed border-gray-400';
+                    div.dataset.group = group.id;
+                    div.innerHTML = `<h3 class="font-bold text-lg mb-2">${group.name}</h3>`;
+                    foodGroupZones.appendChild(div);
+                });
+                document.getElementById('food-group-zones').className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4';
+                enableDragAndDrop();
+            }
+
+            // Section 9: Butterfly Life Cycle
+            function initializeLifecycleGame() {
+                const sourceContainer = document.getElementById('lifecycle-stages-source');
+                const dropContainer = document.getElementById('lifecycle-drop-zones');
+                sourceContainer.innerHTML = '';
+                dropContainer.innerHTML = '';
+                
+                const stages = [
+                    { id: 'stage1', order: 1, name: 'Eggs', emoji: '🥚' },
+                    { id: 'stage2', order: 2, name: 'Caterpillar', emoji: '🐛' },
+                    { id: 'stage3', order: 3, name: 'Chrysalis', emoji: '⚪' },
+                    { id: 'stage4', order: 4, name: 'Butterfly', emoji: '🦋' }
+                ].sort(() => 0.5 - Math.random());
+
+                stages.forEach(stage => {
+                    const div = document.createElement('div');
+                    div.id = stage.id;
+                    div.className = 'draggable-item bg-white p-4 rounded-lg shadow-md text-center';
+                    div.setAttribute('draggable', 'true');
+                    div.dataset.order = stage.order;
+                    div.innerHTML = `<span class="text-4xl">${stage.emoji}</span><p class="font-bold">${stage.name}</p>`;
+                    sourceContainer.appendChild(div);
+                });
+
+                for (let i = 1; i <= 4; i++) {
+                    if (i > 1) {
+                         const arrow = document.createElement('div');
+                         arrow.className = 'text-4xl text-gray-400 font-bold mx-2 hidden lg:block';
+                         arrow.innerHTML = `→`;
+                         dropContainer.appendChild(arrow);
+                    }
+                    const zone = document.createElement('div');
+                    zone.className = 'drop-zone bg-gray-200 rounded-lg w-32 h-32 flex items-center justify-center border-2 border-dashed border-gray-400';
+                    zone.dataset.order = i;
+                    zone.innerHTML = `<span class="text-5xl font-bold text-gray-400">${i}</span>`;
+                    dropContainer.appendChild(zone);
+                }
+
+                enableDragAndDrop();
+            }
+
+
+            // Initialize all games
+            initializeMatchingGame();
+            initializePlantGame();
+            initializeSinkFloatGame();
+            initializeSoundMatchingGame();
+            initializeFoodGroupGame();
+            initializeLifecycleGame();
+        });
+    </script>
+</body>
+</html>
+ 
